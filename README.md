@@ -6,6 +6,9 @@ My favorite progrmming tools are neovim, tmux on a fast terminal emulator and fi
 I've tried w3m, lynx, browsh, libsixel, vim-bind webextension, keyboard-driven browser, etc.
 but I can't find anything that goes beyond vimerator.
 
+## Features
+There is no implementation
+
 ## Concept
 * text-based web browser
 * Using a full-featured browser
@@ -13,6 +16,3 @@ but I can't find anything that goes beyond vimerator.
   - It's impossible to develop a full-featured browser by myself
 * and Switchable
   - Non-textual rich contents may be required
-
-## Features
-There is no implementation
