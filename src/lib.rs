@@ -27,6 +27,8 @@ trait Transport {
         &mut self,
         result: lsp_types::InitializeResult
     ) -> anyhow::Result<()>;
+
+    fn close(self) -> anyhow::Result<()>;
 }
 
 pub async fn run_server() -> anyhow::Result<()> {

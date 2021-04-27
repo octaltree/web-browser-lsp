@@ -41,4 +41,6 @@ impl Transport for Stdio {
             .initialize_finish(initialize_id, initialize_result)?;
         Ok(())
     }
+
+    fn close(self) -> anyhow::Result<()> { Ok(self.io_threads.join()?) }
 }
