@@ -16,3 +16,6 @@ There is no implementation
   - It's impossible to develop a full-featured browser by myself
 * and Switchable
   - Non-textual rich contents may be required
+
+## Credits
+* [rust-analyzer/rust-analyzer](https://github.com/rust-analyzer/rust-analyzer) [MIT](https://github.com/rust-analyzer/rust-analyzer/blob/master/LICENSE-MIT)
