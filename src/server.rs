@@ -100,8 +100,9 @@ fn supports_utf8(caps: &lsp_types::ClientCapabilities) -> bool {
 
 // web-browser-lsp://
 // first version of buffer spec
+// respects CommonMark or Github Flavored but position is dynamic like browsh
 // ```
-// {url}
+// [url]
 // blank line
 // body
 // ```
