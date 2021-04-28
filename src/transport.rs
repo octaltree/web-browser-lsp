@@ -19,7 +19,11 @@ impl Stdio {
 }
 
 impl Transport for Stdio {
-    fn wait_initial_message(&mut self) -> anyhow::Result<lsp_types::InitializeParams> {
+    type Message = lsp_server::Message;
+    type InitializeParams = lsp_types::InitializeParams;
+    type InitializeResult = lsp_types::InitializeResult;
+
+    fn wait_initial_message(&mut self) -> Result<lsp_types::InitializeParams, anyhow::Error> {
         let (initialize_id, initialize_params) = self.conn.initialize_start()?;
         log::info!("InitializeParams: {}", initialize_params);
         self.initialize_id = Some(initialize_id);
@@ -30,8 +34,8 @@ impl Transport for Stdio {
 
     fn respond_initial_message(
         &mut self,
-        result: lsp_types::InitializeResult
-    ) -> anyhow::Result<()> {
+        result: Self::InitializeResult
+    ) -> Result<(), anyhow::Error> {
         let initialize_id = self
             .initialize_id
             .take()
@@ -42,5 +46,13 @@ impl Transport for Stdio {
         Ok(())
     }
 
-    fn close(self) -> anyhow::Result<()> { Ok(self.io_threads.join()?) }
+    fn send(&mut self, msg: Self::Message) -> Result<(), anyhow::Error> {
+        Ok(self.conn.sender.send(msg)?)
+    }
+
+    fn next_message(&mut self) -> Result<Self::Message, anyhow::Error> {
+        Ok(self.conn.receiver.recv()?)
+    }
+
+    fn close(self) -> Result<(), anyhow::Error> { Ok(self.io_threads.join()?) }
 }
