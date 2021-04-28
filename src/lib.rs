@@ -43,7 +43,7 @@ trait Transport {
 pub async fn run_server() -> anyhow::Result<()> {
     use self::{transport::Stdio, worker::Worker};
     let mut transport = Stdio::new();
-    let mut server = Worker::new();
+    let mut server = Worker::default();
     let req = transport.wait_initial_message()?;
     let result = server.initialize(req).await?;
     transport.respond_initial_message(result)?;
