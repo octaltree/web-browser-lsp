@@ -6,7 +6,7 @@ use lsp_types::{
     InitializeResult, ServerCapabilities
 };
 use serde::{de::DeserializeOwned, Serialize};
-use std::{fmt, panic};
+use std::{fmt, future::Future, panic};
 
 #[derive(Debug)]
 struct ErrorBody {
@@ -58,13 +58,14 @@ impl LspServer for Worker {
         &mut self,
         msg: Self::Request
     ) -> Result<Self::Response, anyhow::Error> {
-        // TODO: async, async respond
         let response = match msg.method.as_str() {
-            lsp_types::request::Shutdown::METHOD => self
-                .lift_request::<lsp_types::request::Shutdown>(msg, |this, ()| {
+            lsp_types::request::Shutdown::METHOD => {
+                self.lift_request::<lsp_types::request::Shutdown, _>(msg, |this, ()| async move {
                     this.shutdown_requested = true;
                     Ok(())
-                })?,
+                })
+                .await?
+            }
             _ => {
                 log::error!("unknown request: {:?}", msg);
                 lsp_server::Response::new_err(
@@ -100,26 +101,24 @@ impl LspServer for Worker {
 }
 
 impl Worker {
-    fn lift_request<R>(
-        &mut self,
+    async fn lift_request<'a, R, F>(
+        &'a mut self,
         msg: lsp_server::Request,
-        f: fn(&mut Self, R::Params) -> anyhow::Result<R::Result>
+        f: fn(&'a mut Self, R::Params) -> F
     ) -> anyhow::Result<<Self as LspServer>::Response>
     where
         R: lsp_types::request::Request + 'static,
         R::Params: DeserializeOwned + panic::UnwindSafe + fmt::Debug + 'static,
-        R::Result: Serialize + 'static
+        R::Result: Serialize + 'static,
+        F: Future<Output = anyhow::Result<R::Result>>
     {
         let (id, params) = match parse_request::<R>(msg) {
             Ok((id, params)) => (id, params),
             Err(response) => return Ok(response)
         };
-        let world = panic::AssertUnwindSafe(self);
-        let response = panic::catch_unwind(move || {
-            let result = f(world.0, params);
-            result_to_response::<R>(id, result)
-        })
-        .map_err(|_err| anyhow::anyhow!("sync task {:?} panicked", R::METHOD))?;
+        // rust-analyzer handles panics
+        let result = f(self, params).await;
+        let response = result_to_response::<R>(id, result);
         Ok(response)
     }
 }
