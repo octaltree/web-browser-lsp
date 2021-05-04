@@ -46,6 +46,7 @@ pub async fn run_server() -> anyhow::Result<()> {
     let mut worker = Worker::new(transport);
     worker.initialize().await?;
     let result = worker.run().await;
+    log::info!("exit success");
     worker.close()?;
     result?;
     log::info!("server did shut down");

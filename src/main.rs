@@ -12,7 +12,7 @@ async fn main() {
     init_log(temp_dir.path()).unwrap();
     let opt: Opt = Opt::from_args();
     if let Err(err) = run(opt).await {
-        eprintln!("{:?}", err);
+        log::error!("{:?}", err);
         process::exit(101);
     }
 }

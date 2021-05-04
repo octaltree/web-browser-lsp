@@ -48,6 +48,7 @@ impl Transport for Stdio {
     }
 
     fn send(&mut self, msg: Self::Message) -> Result<(), anyhow::Error> {
+        log::debug!("SEND: {:?}", &msg);
         Ok(self.conn.sender.send(msg)?)
     }
 

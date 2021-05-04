@@ -1,4 +1,4 @@
-use super::Worker;
+use super::{ResponseHandler, Worker};
 use crate::{LspServer, Transport};
 use lsp_server::{ErrorCode, RequestId};
 use lsp_types::{
@@ -39,7 +39,7 @@ fn _impl_lsp_error() {
 #[async_trait]
 impl<T> LspServer for Worker<T>
 where
-    T: Transport + Send
+    T: Transport<Message = lsp_server::Message> + Send
 {
     type Notification = lsp_server::Notification;
     type Request = lsp_server::Request;
@@ -51,8 +51,37 @@ where
         &mut self,
         msg: Self::Notification
     ) -> Result<bool, anyhow::Error> {
-        if msg.method == lsp_types::notification::Exit::METHOD {
-            return Ok(true);
+        match msg.method.as_str() {
+            lsp_types::notification::Exit::METHOD => return Ok(true),
+            lsp_types::notification::DidChangeConfiguration::METHOD => {
+                self.send_request::<lsp_types::request::WorkspaceConfiguration>(
+                    lsp_types::ConfigurationParams {
+                        items: vec![lsp_types::ConfigurationItem {
+                            scope_uri: None,
+                            section: Some("web-browser-lsp".to_string())
+                        }]
+                    },
+                    |worker, resp| {
+                        log::debug!("config update response: '{:?}", resp);
+                        let Self::Response { error, result, .. } = resp;
+                        match (error, result) {
+                            (Some(err), _) => {
+                                log::error!("failed to fetch the server settings: {:?}", err)
+                            }
+                            (None, Some(mut configs)) => {
+                                if let Some(json) = configs.get_mut(0) {
+                                    // TODO
+                                }
+                            }
+                            (None, None) => log::error!(
+                                "received empty server settings response from the client"
+                            )
+                        }
+                        Ok(())
+                    }
+                )?;
+            }
+            _ => {}
         }
         Ok(false)
     }
@@ -71,8 +100,8 @@ where
         }
         let response = match msg.method.as_str() {
             lsp_types::request::Shutdown::METHOD => {
-                self.lift_request::<lsp_types::request::Shutdown, _>(msg, |this, ()| async move {
-                    this.shutdown_requested = true;
+                self.lift_request::<lsp_types::request::Shutdown, _>(msg, |worker, ()| async move {
+                    worker.shutdown_requested = true;
                     Ok(())
                 })
                 .await?
@@ -113,7 +142,7 @@ where
 
 impl<T> Worker<T>
 where
-    T: Transport + Send
+    T: Transport<Message = lsp_server::Message> + Send
 {
     async fn lift_request<'a, R, F>(
         &'a mut self,
@@ -134,6 +163,19 @@ where
         let result = f(self, params).await;
         let response = result_to_response::<R>(id, result);
         Ok(response)
+    }
+
+    fn send_request<R: lsp_types::request::Request>(
+        &mut self,
+        params: R::Params,
+        handler: ResponseHandler<T>
+    ) -> anyhow::Result<()> {
+        let request =
+            self.transport_queue
+                .outgoing
+                .register(R::METHOD.to_string(), params, handler);
+        self.transport.send(request.into())?;
+        Ok(())
     }
 }
 
