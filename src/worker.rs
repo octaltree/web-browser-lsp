@@ -29,6 +29,7 @@ impl Worker {
     where
         T: Transport<Message = lsp_server::Message>
     {
+        log::debug!("RECV: {:?}", msg);
         let should_close = match msg {
             lsp_server::Message::Request(req) => {
                 let response = self.handle_request(req).await?;

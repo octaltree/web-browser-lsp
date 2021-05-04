@@ -58,6 +58,14 @@ impl LspServer for Worker {
         &mut self,
         msg: Self::Request
     ) -> Result<Self::Response, anyhow::Error> {
+        if self.shutdown_requested {
+            let response = ErrorBody::new(
+                ErrorCode::InvalidRequest,
+                "Shutdown already requested.".into()
+            )
+            .into_response(msg.id);
+            return Ok(response);
+        }
         let response = match msg.method.as_str() {
             lsp_types::request::Shutdown::METHOD => {
                 self.lift_request::<lsp_types::request::Shutdown, _>(msg, |this, ()| async move {
