@@ -1,5 +1,5 @@
 use super::Worker;
-use crate::LspServer;
+use crate::{LspServer, Transport};
 use lsp_server::{ErrorCode, RequestId};
 use lsp_types::{
     notification::Notification as _, request::Request as _, ClientCapabilities, InitializeParams,
@@ -37,7 +37,10 @@ fn _impl_lsp_error() {
 }
 
 #[async_trait]
-impl LspServer for Worker {
+impl<T> LspServer for Worker<T>
+where
+    T: Transport + Send
+{
     type Notification = lsp_server::Notification;
     type Request = lsp_server::Request;
     type Response = lsp_server::Response;
@@ -108,7 +111,10 @@ impl LspServer for Worker {
     }
 }
 
-impl Worker {
+impl<T> Worker<T>
+where
+    T: Transport + Send
+{
     async fn lift_request<'a, R, F>(
         &'a mut self,
         msg: lsp_server::Request,

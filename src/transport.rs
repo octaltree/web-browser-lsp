@@ -18,6 +18,7 @@ impl Stdio {
     }
 }
 
+#[async_trait]
 impl Transport for Stdio {
     type Message = lsp_server::Message;
     type InitializeParams = lsp_types::InitializeParams;

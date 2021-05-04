@@ -7,7 +7,7 @@ dev: format lint
 	cargo build
 
 d:
-	cargo watch -c -s 'make dev'
+	cargo watch -c -s 'echo "" && make dev'
 
 format:
 	cargo fmt
