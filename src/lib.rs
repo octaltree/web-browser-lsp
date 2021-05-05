@@ -4,6 +4,12 @@ extern crate async_trait;
 mod transport;
 mod worker;
 
+use std::{
+    env, fs,
+    path::{Path, PathBuf},
+    process
+};
+
 #[async_trait]
 trait LspServer {
     type Notification;
@@ -40,15 +46,35 @@ trait Transport {
     fn close(self) -> Result<(), anyhow::Error>;
 }
 
-pub async fn run_server() -> anyhow::Result<()> {
+pub async fn run_server(temp_dir: TempDir) -> anyhow::Result<()> {
     use self::{transport::Stdio, worker::Worker};
     let transport = Stdio::new();
     let mut worker = Worker::new(transport);
     worker.initialize().await?;
-    let result = worker.run().await;
+    worker.run().await?;
+    // client may kill on stdio closed
+    temp_dir.remove();
     log::info!("exit success");
     worker.close()?;
-    result?;
-    log::info!("server did shut down");
     Ok(())
+}
+
+pub struct TempDir {
+    path: PathBuf
+}
+
+impl TempDir {
+    /// # Panics
+    /// Panics if io::Error is unwrapped
+    pub fn new() -> Self {
+        let id = process::id();
+        let base = env::temp_dir();
+        let path = base.join(format!("web-browser-lsp-{}", id));
+        fs::create_dir(&path).unwrap();
+        Self { path }
+    }
+
+    pub fn as_path(&self) -> &Path { &self.path }
+
+    fn remove(self) { fs::remove_dir_all(self.as_path()).ok(); }
 }

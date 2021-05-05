@@ -49,7 +49,6 @@ where
                 break;
             }
         }
-        log::info!("exit");
         Ok(())
     }
 

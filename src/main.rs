@@ -1,17 +1,13 @@
-use std::{
-    env, fs,
-    path::{Path, PathBuf},
-    process
-};
+use std::{path::Path, process};
 use structopt::StructOpt;
-use web_browser_lsp::run_server;
+use web_browser_lsp::{run_server, TempDir};
 
 #[tokio::main]
 async fn main() {
     let temp_dir = TempDir::new();
-    init_log(temp_dir.path()).unwrap();
+    init_log(temp_dir.as_path()).unwrap();
     let opt: Opt = Opt::from_args();
-    if let Err(err) = run(opt).await {
+    if let Err(err) = run(opt, temp_dir).await {
         log::error!("{:?}", err);
         process::exit(101);
     }
@@ -38,10 +34,10 @@ fn init_log(temp_dir: &Path) -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn run(opt: Opt) -> anyhow::Result<()> {
+async fn run(opt: Opt, temp_dir: TempDir) -> anyhow::Result<()> {
     match opt.sub_command.as_ref() {
-        Some(SubCommand::Server(_)) => run_server().await?,
-        _ => run_server().await?
+        Some(SubCommand::Server(_)) => run_server(temp_dir).await?,
+        _ => run_server(temp_dir).await?
     }
     Ok(())
 }
@@ -59,25 +55,3 @@ enum SubCommand {
 
 #[derive(Debug, StructOpt)]
 struct Server {}
-
-struct TempDir {
-    path: PathBuf
-}
-
-impl TempDir {
-    /// # Panics
-    /// Panics if io::Error is unwrapped
-    fn new() -> Self {
-        let id = process::id();
-        let base = env::temp_dir();
-        let path = base.join(format!("web-browser-lsp-{}", id));
-        fs::create_dir(&path).unwrap();
-        Self { path }
-    }
-
-    fn path(&self) -> &Path { &self.path }
-}
-
-impl Drop for TempDir {
-    fn drop(&mut self) { fs::remove_dir_all(&self.path()).ok(); }
-}
