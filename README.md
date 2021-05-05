@@ -12,6 +12,8 @@ There is no implementation
 * `web-browser-lsp/tab` creates first tab but not connect
 * `textDocument/formatting` shows tab contents in text editor
 
+![demo](https://user-images.githubusercontent.com/7942952/117168466-21cab600-ae03-11eb-9f8c-5b4736bc60d9.gif)
+
 ## Wish and Concept
 * text-based web browser
 * Using a full-featured browser
