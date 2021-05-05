@@ -9,9 +9,10 @@ but I can't find anything that goes beyond vimerator.
 ## Features
 There is no implementation
 * initialize, shutdown, exit
-* create first tab but not connect
+* `web-browser-lsp/tab` creates first tab but not connect
+* `textDocument/formatting` shows tab contents in text editor
 
-## Concept
+## Wish and Concept
 * text-based web browser
 * Using a full-featured browser
   - Connecting via Chrome DevTools Protocol
