@@ -1,5 +1,5 @@
 use super::{ResponseHandler, Worker};
-use crate::{LspServer, Transport};
+use crate::{lsp_ext, LspServer, Transport};
 use lsp_server::{ErrorCode, RequestId};
 use lsp_types::{
     notification::Notification as _, request::Request as _, ClientCapabilities, InitializeParams,
@@ -81,6 +81,15 @@ where
                     }
                 )?;
             }
+            lsp_types::notification::DidChangeTextDocument::METHOD => {
+                let params =
+                    parse_notification::<lsp_types::notification::DidChangeTextDocument>(msg)?;
+                // NOTE: setting full sync
+                let first = params.content_changes.into_iter().next();
+                if let Some(changed) = first {
+                    self.content = changed.text;
+                }
+            }
             _ => {}
         }
         Ok(false)
@@ -104,6 +113,32 @@ where
                     worker.shutdown_requested = true;
                     Ok(())
                 })
+                .await?
+            }
+            lsp_ext::Tab::METHOD => {
+                self.lift_request::<lsp_ext::Tab, _>(msg, |worker, params| async move {
+                    let browser = worker
+                        .playwright
+                        .chromium()
+                        .launcher()
+                        .headless(false)
+                        .launch()
+                        .await?;
+                    let context = browser.context_builder().build().await?;
+                    let page = context.new_page().await?;
+                    worker.active_tab = Some(page);
+                    Ok(())
+                })
+                .await?
+            }
+            lsp_types::request::Formatting::METHOD => {
+                self.lift_request::<lsp_types::request::Formatting, _>(
+                    msg,
+                    |worker, params| async move {
+                        log::debug!("{:?}", params);
+                        Ok(None)
+                    }
+                )
                 .await?
             }
             _ => {
@@ -179,6 +214,16 @@ where
     }
 }
 
+fn parse_notification<N>(msg: lsp_server::Notification) -> anyhow::Result<N::Params>
+where
+    N: lsp_types::notification::Notification + 'static,
+    N::Params: DeserializeOwned + 'static
+{
+    let lsp_server::Notification { params, .. } = msg;
+    let res: N::Params = serde_json::from_value(params)?;
+    Ok(res)
+}
+
 fn parse_request<R>(
     msg: lsp_server::Request
 ) -> Result<(RequestId, R::Params), lsp_server::Response>
@@ -222,8 +267,20 @@ where
 }
 
 pub fn server_capabilities(client_caps: &ClientCapabilities) -> ServerCapabilities {
+    use lsp_types::{
+        ExecuteCommandOptions, OneOf, TextDocumentSyncCapability, TextDocumentSyncKind,
+        TextDocumentSyncOptions, WorkDoneProgressOptions
+    };
     ServerCapabilities {
-        text_document_sync: None,
+        text_document_sync: Some(TextDocumentSyncCapability::Options(
+            TextDocumentSyncOptions {
+                open_close: None,
+                change: Some(TextDocumentSyncKind::Full),
+                will_save: None,
+                will_save_wait_until: None,
+                save: None
+            }
+        )),
         selection_range_provider: None,
         hover_provider: None,
         completion_provider: None,
@@ -237,7 +294,7 @@ pub fn server_capabilities(client_caps: &ClientCapabilities) -> ServerCapabiliti
         workspace_symbol_provider: None,
         code_action_provider: None,
         code_lens_provider: None,
-        document_formatting_provider: None,
+        document_formatting_provider: Some(OneOf::Left(true)),
         document_range_formatting_provider: None,
         document_on_type_formatting_provider: None,
         rename_provider: None,

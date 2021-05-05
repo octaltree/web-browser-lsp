@@ -1,9 +1,11 @@
 #[macro_use]
 extern crate async_trait;
 
+pub mod lsp_ext;
 mod transport;
 mod worker;
 
+use playwright::Playwright;
 use std::{
     env, fs,
     path::{Path, PathBuf},
@@ -49,7 +51,9 @@ trait Transport {
 pub async fn run_server(temp_dir: TempDir) -> anyhow::Result<()> {
     use self::{transport::Stdio, worker::Worker};
     let transport = Stdio::new();
-    let mut worker = Worker::new(transport);
+    let playwright = Playwright::initialize().await?;
+    playwright.prepare()?;
+    let mut worker = Worker::new(transport, playwright);
     worker.initialize().await?;
     worker.run().await?;
     // client may kill on stdio closed

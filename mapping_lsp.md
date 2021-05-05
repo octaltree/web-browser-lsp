@@ -9,7 +9,7 @@
 * Request `document/hover` wih autocmd CursorHold emits mouse hover
 * Request `textDoucment/formatting` re-rendering
 
-* Request `web-browser-lsp/page/reload`
+* Request `web-browser-lsp/page/reload` or dummy command with `workspace/executeCommand`
 * Request `web-browser-lsp/page/goBack`
 * Request `web-browser-lsp/page/goForward`
 

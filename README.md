@@ -9,6 +9,7 @@ but I can't find anything that goes beyond vimerator.
 ## Features
 There is no implementation
 * initialize, shutdown, exit
+* create first tab but not connect
 
 ## Concept
 * text-based web browser

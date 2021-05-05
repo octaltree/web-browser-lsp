@@ -1,6 +1,10 @@
 mod lsp;
 
 use super::{LspServer, Transport};
+use playwright::{
+    api::{BrowserContext, Page},
+    Playwright
+};
 use std::time::Instant;
 
 // pub(crate) type ResponseHandler = fn(&mut Worker, lsp_server::Response);
@@ -10,7 +14,10 @@ type TransportQueue<T> = lsp_server::ReqQueue<(String, Instant), ResponseHandler
 pub(super) struct Worker<T: Transport> {
     transport: T,
     transport_queue: TransportQueue<T>,
-    shutdown_requested: bool
+    shutdown_requested: bool,
+    playwright: Playwright,
+    active_tab: Option<Page>,
+    content: String
 }
 
 impl<T> Worker<T>
@@ -21,11 +28,14 @@ where
             Message = lsp_server::Message
         > + Send
 {
-    pub(super) fn new(transport: T) -> Self {
+    pub(super) fn new(transport: T, playwright: Playwright) -> Self {
         Self {
             transport,
             transport_queue: TransportQueue::default(),
-            shutdown_requested: false
+            shutdown_requested: false,
+            playwright,
+            active_tab: None,
+            content: "".into()
         }
     }
 
