@@ -3,7 +3,7 @@ use crate::{lsp_ext, LspServer, Transport};
 use lsp_server::{ErrorCode, RequestId};
 use lsp_types::{
     notification::Notification as _, request::Request as _, ClientCapabilities, InitializeParams,
-    InitializeResult, ServerCapabilities
+    InitializeResult, Position, Range, ServerCapabilities, TextEdit
 };
 use serde::{de::DeserializeOwned, Serialize};
 use std::{fmt, future::Future, panic};
@@ -134,9 +134,42 @@ where
             lsp_types::request::Formatting::METHOD => {
                 self.lift_request::<lsp_types::request::Formatting, _>(
                     msg,
-                    |worker, params| async move {
-                        log::debug!("{:?}", params);
-                        Ok(None)
+                    |worker, _params| async move {
+                        // FIXME: count char
+                        if let Some(tab) = &worker.active_tab {
+                            let s = tab.inner_text("body", None).await?;
+                            let n = s.lines().count();
+                            let last = s.lines().last().unwrap_or_default();
+                            Ok(Some(vec![TextEdit {
+                                range: Range {
+                                    start: Position {
+                                        line: 0,
+                                        character: 0
+                                    },
+                                    end: Position {
+                                        line: n as u32,
+                                        character: last.len() as u32
+                                    }
+                                },
+                                new_text: s
+                            }]))
+                        } else {
+                            let n = worker.content.lines().count();
+                            let last = worker.content.lines().last().unwrap_or_default();
+                            Ok(Some(vec![TextEdit {
+                                range: Range {
+                                    start: Position {
+                                        line: 0,
+                                        character: 0
+                                    },
+                                    end: Position {
+                                        line: n as u32,
+                                        character: last.len() as u32
+                                    }
+                                },
+                                new_text: "".into()
+                            }]))
+                        }
                     }
                 )
                 .await?
